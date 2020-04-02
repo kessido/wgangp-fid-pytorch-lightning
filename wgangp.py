@@ -59,11 +59,11 @@ class WGanGP(LightningModule):
     def forward(self, x):
         return self.generator(x)
 
-    def randn_z(self, sz):
-        return torch.randn(sz, self.hparams.z_sz, 1, 1, device=imgs.device)
+    def randn_z(self, imgs):
+        return torch.randn(imgs.size(0), self.hparams.z_sz, 1, 1, device=imgs.device)
 
     def training_step_generator(self, imgs):
-        generated_images = self(self.randn_z(imgs.size(0)))
+        generated_images = self(self.randn_z(imgs))
         g_loss = torch.relu(1 - self.discriminator(generated_images)).mean()
 
         tqdm_dict = {'g_loss': g_loss}
@@ -76,7 +76,7 @@ class WGanGP(LightningModule):
 
     def training_step_discriminator(self, imgs):
         with torch.no_grad():
-            generated_images = self(self.randn_z(imgs.size(0))).detach()
+            generated_images = self(self.randn_z(imgs)).detach()
         fake_loss = torch.relu(1 + self.discriminator(generated_images)).mean()
         real_loss = torch.relu(1 - self.discriminator(imgs)).mean()
 
@@ -117,7 +117,7 @@ class WGanGP(LightningModule):
             return F.adaptive_avg_pool2d(self.inception(x_)[0], 1).view(x.size(0), 1, -1)
         with torch.no_grad():
             return torch.cat([incept_act(x),
-                              incept_act(self(self.randn_z(x.size(0))))], dim=1)
+                              incept_act(self(self.randn_z(x)))], dim=1)
 
     def validation_epoch_end(self, outputs):
         def get_mu_sig(x):
